@@ -28,6 +28,7 @@ class CriticSettings(BaseModel):
     critic_threshold: float = DEFAULT_CRITIC_THRESHOLD
     issue_threshold: float = DEFAULT_ISSUE_THRESHOLD
     max_refinement_iterations: int = DEFAULT_MAX_REFINEMENT_ITERATIONS
+    model_name: str = "critic"
 
     @field_validator("critic_threshold", "issue_threshold")
     @classmethod
