@@ -13,7 +13,7 @@ from openhands_cli.stores.cli_settings import (
     CriticSettings,
 )
 
-from .cli_settings_tab import SettingsSwitch
+from .cli_settings_tab import SettingsSwitch, SettingsInput
 
 
 class ThresholdInput(Container):
@@ -144,6 +144,7 @@ class CriticSettingsTab(Container):
         enable_refinement = self._initial_settings.enable_iterative_refinement
         threshold = self._initial_settings.critic_threshold
         issue_threshold = self._initial_settings.issue_threshold
+        model_name = self._initial_settings.model_name or "critic"
 
         with VerticalScroll(id="critic_settings_content"):
             yield Static("Critic Settings (Experimental)", classes="form_section_title")
@@ -200,6 +201,18 @@ class CriticSettingsTab(Container):
                 value=issue_threshold,
                 disabled=not enable_refinement,
             )
+            
+            yield SettingsInput(
+                label="Critic Model Name",
+                description=(
+                    "The model name to use for the critic. For local endpoints, "
+                    "this should match the model name served by your local LLM server. "
+                    "Default: 'critic'"
+                ),
+                input_id="critic_model_name_input",
+                value=model_name,
+                placeholder="e.g., openai/Qwen3-30B-Q4_K_M",
+            )
 
     def on_switch_changed(self, event: Switch.Changed) -> None:
         """Handle switch changes to enable/disable threshold inputs."""
@@ -232,7 +245,7 @@ class CriticSettingsTab(Container):
 
         Returns:
             Dict with 'enable_critic', 'enable_iterative_refinement',
-            'critic_threshold', and 'issue_threshold' values.
+            'critic_threshold', 'issue_threshold', and 'model_name' values.
         """
         enable_critic_switch = self.query_one("#enable_critic_switch", Switch)
         enable_refinement_switch = self.query_one(
@@ -240,6 +253,7 @@ class CriticSettingsTab(Container):
         )
         threshold_input = self.query_one("#critic_threshold_input", Input)
         issue_threshold_input = self.query_one("#issue_threshold_input", Input)
+        model_name_input = self.query_one("#critic_model_name_input", Input)
 
         # Parse and validate threshold values (convert from percentage to 0-1 range)
         threshold = self._parse_threshold(
@@ -254,6 +268,7 @@ class CriticSettingsTab(Container):
             "enable_iterative_refinement": enable_refinement_switch.value,
             "critic_threshold": threshold,
             "issue_threshold": issue_threshold,
+            "model_name": model_name_input.value or "critic",
         }
 
     def _parse_threshold(self, value: str, default: float) -> float:
