@@ -78,7 +78,7 @@ def get_persisted_conversation_tools(conversation_id: str) -> list[Tool] | None:
 
 
 def get_default_critic(llm: LLM, *, enable_critic: bool = True) -> CriticBase | None:
-    """Auto-configure critic for All-Hands LLM proxy.
+    """Auto-configure critic for All-Hands LLM proxy or custom endpoints.
 
     When the LLM base_url matches `llm-proxy.*.all-hands.dev`, returns an
     APIBasedCritic configured with:
@@ -86,8 +86,12 @@ def get_default_critic(llm: LLM, *, enable_critic: bool = True) -> CriticBase | 
     - api_key: same as LLM
     - model_name: "critic"
 
-    Returns None if base_url doesn't match, api_key is not set, or enable_critic
-    is False.
+    For custom OpenAI-compatible endpoints, returns an APIBasedCritic with:
+    - server_url: {base_url} (without /vllm suffix)
+    - api_key: "no" for local endpoints (validator requires non-empty)
+    - model_name: from settings (default: "critic")
+
+    Returns None if enable_critic is False or if api_key is None/empty.
 
     Args:
         llm: The LLM configuration
@@ -99,24 +103,46 @@ def get_default_critic(llm: LLM, *, enable_critic: bool = True) -> CriticBase | 
 
     base_url = llm.base_url
     api_key = llm.api_key
-    if base_url is None or api_key is None:
+    if base_url is None:
         return None
+        
+    # Load settings to get critic model name
+    cli_settings = CliSettings.load()
+    critic_model_name = cli_settings.critic.model_name if hasattr(cli_settings.critic, 'model_name') else "critic"
+    # Use default "critic" if model_name is empty or None
+    critic_model_name = critic_model_name if critic_model_name else "critic"
 
     # Match: llm-proxy.{env}.all-hands.dev (e.g., staging, prod, eval, app)
     pattern = r"^https?://llm-proxy\.[^./]+\.all-hands\.dev"
-    if not re.match(pattern, base_url):
-        return None
-
-    try:
+    if re.match(pattern, base_url):
+        # All-Hands proxy endpoint
+        if api_key is None:
+            return None
         return APIBasedCritic(
             server_url=f"{base_url.rstrip('/')}/vllm",
             api_key=api_key,
             model_name="critic",
         )
-    except Exception:
-        # If critic creation fails, silently return None
-        # This allows the CLI to continue working without critic
+
+    # Custom OpenAI-compatible endpoint (e.g., http://localhost:8080/v1)
+    # Use the base_url directly without /vllm suffix
+    # For local endpoints, use "no" as api_key (validator requires non-empty)
+    # Return None if api_key is None or empty
+    if api_key is None:
         return None
+    api_key_value = api_key.get_secret_value() if isinstance(api_key, SecretStr) else api_key
+    if not api_key_value or not api_key_value.strip():
+        return None
+
+    # For local endpoints, use "no" as api_key (validator requires non-empty)
+    # For remote endpoints, use the provided api_key
+    api_key_for_critic = "no" if base_url.startswith("http://localhost") else api_key
+
+    return APIBasedCritic(
+        server_url=base_url.rstrip('/'),
+        api_key=api_key_for_critic,
+        model_name=critic_model_name,
+    )
 
 
 DEFAULT_LLM_BASE_URL = "https://llm-proxy.app.all-hands.dev/"
