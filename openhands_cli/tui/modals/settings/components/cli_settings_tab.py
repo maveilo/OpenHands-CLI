@@ -4,7 +4,7 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
-from textual.widgets import Label, Static, Switch
+from textual.widgets import Input, Label, Static, Switch
 
 from openhands_cli.stores.cli_settings import CliSettings
 
@@ -40,6 +40,80 @@ class SettingsSwitch(Container):
             yield Label(f"{self._label}:", classes="form_label switch_label")
             yield Switch(value=self._value, id=self._switch_id, classes="form_switch")
         yield Static(self._description, classes="form_help switch_help")
+
+
+class SettingsSwitch(Container):
+    """Reusable switch component for settings forms."""
+
+    def __init__(
+        self,
+        label: str,
+        description: str,
+        switch_id: str,
+        value: bool = False,
+        **kwargs,
+    ):
+        """Initialize the settings switch.
+
+        Args:
+            label: The label text for the switch
+            description: Help text describing the setting
+            switch_id: Unique ID for the switch widget
+            value: Initial value of the switch
+        """
+        super().__init__(classes="form_group", **kwargs)
+        self._label = label
+        self._description = description
+        self._switch_id = switch_id
+        self._value = value
+
+    def compose(self) -> ComposeResult:
+        """Compose the switch with label and description."""
+        with Horizontal(classes="switch_container"):
+            yield Label(f"{self._label}:", classes="form_label switch_label")
+            yield Switch(value=self._value, id=self._switch_id, classes="form_switch")
+        yield Static(self._description, classes="form_help switch_help")
+
+
+class SettingsInput(Container):
+    """Reusable input component for settings forms."""
+
+    def __init__(
+        self,
+        label: str,
+        description: str,
+        input_id: str,
+        value: str = "",
+        placeholder: str = "",
+        **kwargs,
+    ):
+        """Initialize the settings input.
+
+        Args:
+            label: The label text for the input
+            description: Help text describing the setting
+            input_id: Unique ID for the input widget
+            value: Initial value
+            placeholder: Placeholder text for the input
+        """
+        super().__init__(classes="form_group", **kwargs)
+        self._label = label
+        self._description = description
+        self._input_id = input_id
+        self._value = value
+        self._placeholder = placeholder
+
+    def compose(self) -> ComposeResult:
+        """Compose the input with label and description."""
+        with Horizontal(classes="input_container"):
+            yield Label(f"{self._label}:", classes="form_label input_label")
+            yield Input(
+                value=self._value,
+                placeholder=self._placeholder,
+                id=self._input_id,
+                classes="form_input",
+            )
+        yield Static(self._description, classes="form_help input_help")
 
 
 class CliSettingsTab(Container):
