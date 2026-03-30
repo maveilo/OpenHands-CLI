@@ -155,6 +155,7 @@ class TestCriticSettingsTab:
             enable_iterative_refinement=True,
             critic_threshold=0.6,
             issue_threshold=0.75,
+            model_name="openai/critic_model",
         )
         app = _TestApp(initial_settings=initial)
 
@@ -167,7 +168,9 @@ class TestCriticSettingsTab:
                 "enable_iterative_refinement",
                 "critic_threshold",
                 "issue_threshold",
+                "model_name",
             }
+            assert result["model_name"] == "openai/critic_model"
 
     @pytest.mark.asyncio
     async def test_get_updated_fields_reflects_switch_changes(self):
@@ -246,6 +249,46 @@ class TestCriticSettingsTab:
             result = tab.get_updated_fields()
             assert result["critic_threshold"] == DEFAULT_CRITIC_THRESHOLD
             assert result["issue_threshold"] == DEFAULT_ISSUE_THRESHOLD
+
+    @pytest.mark.asyncio
+    async def test_get_updated_fields_uses_model_name_from_input(self):
+        """Verify get_updated_fields() captures model_name from input."""
+        initial = CriticSettings(
+            enable_critic=True,
+            enable_iterative_refinement=True,
+            model_name="openai/Qwen3-30B-Q4_K_M",
+        )
+        app = _TestApp(initial_settings=initial)
+
+        async with app.run_test():
+            tab = app.query_one(CriticSettingsTab)
+            model_name_input = tab.query_one("#critic_model_name_input", Input)
+
+            # Change model name
+            model_name_input.value = "custom/critic-model"
+
+            result = tab.get_updated_fields()
+            assert result["model_name"] == "custom/critic-model"
+
+    @pytest.mark.asyncio
+    async def test_get_updated_fields_uses_default_model_name(self):
+        """Verify get_updated_fields() uses default 'critic' when model_name is empty."""
+        initial = CriticSettings(
+            enable_critic=True,
+            enable_iterative_refinement=True,
+            model_name="",
+        )
+        app = _TestApp(initial_settings=initial)
+
+        async with app.run_test():
+            tab = app.query_one(CriticSettingsTab)
+            model_name_input = tab.query_one("#critic_model_name_input", Input)
+
+            # Empty model name
+            model_name_input.value = ""
+
+            result = tab.get_updated_fields()
+            assert result["model_name"] == "critic"
 
 
 class TestThresholdInput:
